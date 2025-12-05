@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/logo.png" alt="kokoro-tts-tool logo" width="128">
+</p>
+
 # kokoro-tts-tool
 
 [![Python Version](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
@@ -7,14 +11,17 @@
 [![AI Generated](https://img.shields.io/badge/AI-Generated-blueviolet.svg)](https://www.anthropic.com/claude)
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-5A67D8.svg)](https://www.anthropic.com/claude/code)
 
-A CLI that provides text-to-speech using kokoro
+A CLI that provides local text-to-speech using Kokoro TTS on Apple Silicon. No API keys required.
 
 ## Table of Contents
 
 - [About](#about)
 - [Features](#features)
 - [Installation](#installation)
+- [Quick Start](#quick-start)
 - [Usage](#usage)
+- [Infinite Streaming](#infinite-streaming)
+- [Available Voices](#available-voices)
 - [Multi-Level Verbosity Logging](#multi-level-verbosity-logging)
 - [Shell Completion](#shell-completion)
 - [Development](#development)
@@ -26,17 +33,30 @@ A CLI that provides text-to-speech using kokoro
 
 ## About
 
-`kokoro-tts-tool` is a Python CLI tool built with modern tooling and best practices.
+`kokoro-tts-tool` is a Python CLI tool for local text-to-speech synthesis using the Kokoro-82M model. It runs entirely on your machine with no cloud dependencies, optimized for Apple Silicon Macs.
+
+**Key highlights:**
+- **Local inference**: Uses ONNX runtime for fast, CPU-optimized synthesis
+- **60+ voices**: Multiple languages and accents (English, Japanese, Mandarin, etc.)
+- **Near real-time**: Fast enough for interactive use on Apple Silicon
+- **Infinite streaming**: Continuous TTS for long documents without audio artifacts
+- **No API keys**: Everything runs locally, completely free
 
 ## Features
 
-- ✅ Type-safe with mypy strict mode
-- ✅ Linted with ruff
-- ✅ Tested with pytest
-- 📊 Multi-level verbosity logging (-v/-vv/-vvv)
-- 🐚 Shell completion for bash, zsh, and fish
-- 🔒 Security scanning with bandit, pip-audit, and gitleaks
-- ✅ Modern Python tooling (uv, mise, click)
+- Local TTS with Kokoro-82M (82 million parameters)
+- 60+ voices across 8 languages
+- Near real-time synthesis on Apple Silicon
+- Auto-download of model files (~350MB)
+- WAV output or direct speaker playback
+- Infinite streaming for long documents (books, articles)
+- Seamless audio without pop artifacts between chunks
+- Fast offline rendering (20-50x real-time on M4)
+- Type-safe with mypy strict mode
+- Tested with pytest
+- Multi-level verbosity logging (-v/-vv/-vvv)
+- Shell completion for bash, zsh, and fish
+- Security scanning with bandit, pip-audit, and gitleaks
 
 ## Installation
 
@@ -44,6 +64,7 @@ A CLI that provides text-to-speech using kokoro
 
 - Python 3.14 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
+- Apple Silicon Mac (recommended) or any platform with Python 3.14+
 
 ### Install from source
 
@@ -72,156 +93,161 @@ uv tool install .
 kokoro-tts-tool --version
 ```
 
-## Usage
-
-### Basic Usage
+## Quick Start
 
 ```bash
-# Show help
+# 1. Initialize (downloads models on first run, ~350MB)
+kokoro-tts-tool init
+
+# 2. Synthesize text to speakers
+kokoro-tts-tool synthesize "Hello world!"
+
+# 3. Save to file
+kokoro-tts-tool synthesize "Hello world!" --output hello.wav
+
+# 4. Use different voice
+kokoro-tts-tool synthesize "This is Adam." --voice am_adam
+
+# 5. List available voices
+kokoro-tts-tool list-voices
+```
+
+## Usage
+
+### Commands
+
+```bash
+# Show all commands
 kokoro-tts-tool --help
 
-# Run the tool
-kokoro-tts-tool
+# Download/update models
+kokoro-tts-tool init
 
-# Run with verbose output
-kokoro-tts-tool -v      # INFO level
-kokoro-tts-tool -vv     # DEBUG level
-kokoro-tts-tool -vvv    # TRACE level (includes library internals)
+# Synthesize text
+kokoro-tts-tool synthesize "Your text here"
+kokoro-tts-tool synthesize "Your text" --output speech.wav
+kokoro-tts-tool synthesize "Your text" --voice bf_emma --speed 1.2
+
+# Read from stdin
+echo "Hello from stdin" | kokoro-tts-tool synthesize --stdin
+
+# List voices
+kokoro-tts-tool list-voices
+kokoro-tts-tool list-voices --language English
+kokoro-tts-tool list-voices --gender Female
+kokoro-tts-tool list-voices --json
+
+# Show configuration
+kokoro-tts-tool info
 ```
+
+### Synthesize Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--voice`, `-v` | Voice ID (e.g., af_heart, am_adam) | af_heart |
+| `--output`, `-o` | Output WAV file path | (plays to speakers) |
+| `--speed` | Speech speed (0.5 to 2.0) | 1.0 |
+| `--stdin`, `-s` | Read text from stdin | false |
+
+## Infinite Streaming
+
+Stream long documents (books, articles, study materials) without audio artifacts:
+
+```bash
+# Stream a markdown file to speakers
+kokoro-tts-tool infinite --input book.md
+
+# Render to WAV file (fast offline mode, 20-50x real-time on M4)
+kokoro-tts-tool infinite --input book.md --output audiobook.wav
+
+# Pipe from stdin
+cat chapter.md | kokoro-tts-tool infinite --stdin
+
+# With custom voice and speed
+kokoro-tts-tool infinite --input notes.md --voice am_adam --speed 1.2
+```
+
+### Infinite Streaming Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input`, `-i` | Input text/markdown file | - |
+| `--stdin`, `-s` | Read text from stdin | false |
+| `--output`, `-o` | Save to WAV file (fast offline mode) | (plays to speakers) |
+| `--voice` | Voice ID | af_heart |
+| `--speed` | Speech speed (0.5 to 2.0) | 1.0 |
+| `--chunk-size` | Target words per chunk (50-1000) | 200 |
+| `--pause` | Pause between chunks in ms (0-2000) | 150 |
+| `--no-markdown` | Treat input as plain text | false |
+
+## Available Voices
+
+The tool includes 60+ voices across 8 languages:
+
+### American English (20 voices)
+| Voice ID | Gender | Grade | Description |
+|----------|--------|-------|-------------|
+| `af_heart` | Female | A | Default, emotional, soft (highest quality) |
+| `af_bella` | Female | A- | Expressive, dynamic range |
+| `am_adam` | Male | A- | Deep narrator (audiobooks) |
+| `am_michael` | Male | B+ | Natural, casual |
+
+### British English (8 voices)
+| Voice ID | Gender | Grade | Description |
+|----------|--------|-------|-------------|
+| `bf_emma` | Female | B+ | Polished, formal (education) |
+| `bm_george` | Male | B+ | Resonant, classic (history) |
+
+### Other Languages
+- **Japanese**: jf_alpha, jm_kumo, and more
+- **Mandarin**: zf_xiaobei, zm_yunjian, and more
+- **Spanish**: ef_dora, em_alex
+- **French**: ff_siwis
+- **Hindi**: hf_alpha, hm_omega
+- **Italian**: if_sara, im_nicola
+- **Portuguese (Brazilian)**: pf_dora, pm_alex
+
+Run `kokoro-tts-tool list-voices` for the complete list.
+
+### Voice Quality Grades
+- **A/A-**: Highest quality, recommended for production
+- **B+/B**: Good quality
+- **B-**: Acceptable quality
 
 ## Multi-Level Verbosity Logging
 
-The CLI supports progressive verbosity levels for debugging and troubleshooting. All logs output to stderr, keeping stdout clean for data piping.
-
-### Logging Levels
+The CLI supports progressive verbosity levels for debugging:
 
 | Flag | Level | Output | Use Case |
 |------|-------|--------|----------|
-| (none) | WARNING | Errors and warnings only | Production, quiet mode |
+| (none) | WARNING | Errors and warnings only | Production |
 | `-v` | INFO | + High-level operations | Normal debugging |
-| `-vv` | DEBUG | + Detailed info, full tracebacks | Development, troubleshooting |
+| `-vv` | DEBUG | + Detailed info | Development |
 | `-vvv` | TRACE | + Library internals | Deep debugging |
 
-### Examples
-
 ```bash
-# Quiet mode - only errors and warnings
-kokoro-tts-tool
+# Quiet mode
+kokoro-tts-tool synthesize "Hello"
 
-# INFO - see operations and progress
-kokoro-tts-tool -v
-# Output:
-# [INFO] kokoro-tts-tool started
-# [INFO] kokoro-tts-tool completed
-
-# DEBUG - see detailed information
-kokoro-tts-tool -vv
-# Output:
-# [INFO] kokoro-tts-tool started
-# [DEBUG] Running with verbose level: 2
-# [INFO] kokoro-tts-tool completed
-
-# TRACE - see library internals (configure in logging_config.py)
-kokoro-tts-tool -vvv
-```
-
-### Customizing Library Logging
-
-To enable DEBUG logging for third-party libraries at TRACE level (-vvv), edit `kokoro_tts_tool/logging_config.py`:
-
-```python
-# Configure dependent library loggers at TRACE level (-vvv)
-if verbose_count >= 3:
-    logging.getLogger("requests").setLevel(logging.DEBUG)
-    logging.getLogger("urllib3").setLevel(logging.DEBUG)
-    # Add your project-specific library loggers here
+# With debug output
+kokoro-tts-tool -vv synthesize "Hello"
 ```
 
 ## Shell Completion
 
-The CLI provides native shell completion for bash, zsh, and fish shells.
-
-### Supported Shells
-
-| Shell | Version Requirement | Status |
-|-------|-------------------|--------|
-| **Bash** | ≥ 4.4 | ✅ Supported |
-| **Zsh** | Any recent version | ✅ Supported |
-| **Fish** | ≥ 3.0 | ✅ Supported |
-| **PowerShell** | Any version | ❌ Not Supported |
-
-### Installation
-
-#### Quick Setup (Temporary)
-
-```bash
-# Bash - active for current session only
-eval "$(kokoro-tts-tool completion bash)"
-
-# Zsh - active for current session only
-eval "$(kokoro-tts-tool completion zsh)"
-
-# Fish - active for current session only
-kokoro-tts-tool completion fish | source
-```
-
-#### Permanent Setup (Recommended)
+The CLI provides native shell completion for bash, zsh, and fish:
 
 ```bash
 # Bash - add to ~/.bashrc
 echo 'eval "$(kokoro-tts-tool completion bash)"' >> ~/.bashrc
-source ~/.bashrc
 
 # Zsh - add to ~/.zshrc
 echo 'eval "$(kokoro-tts-tool completion zsh)"' >> ~/.zshrc
-source ~/.zshrc
 
-# Fish - save to completions directory
+# Fish - save to completions
 mkdir -p ~/.config/fish/completions
 kokoro-tts-tool completion fish > ~/.config/fish/completions/kokoro-tts-tool.fish
-```
-
-#### File-based Installation (Better Performance)
-
-For better shell startup performance, generate completion scripts to files:
-
-```bash
-# Bash
-kokoro-tts-tool completion bash > ~/.kokoro-tts-tool-complete.bash
-echo 'source ~/.kokoro-tts-tool-complete.bash' >> ~/.bashrc
-
-# Zsh
-kokoro-tts-tool completion zsh > ~/.kokoro-tts-tool-complete.zsh
-echo 'source ~/.kokoro-tts-tool-complete.zsh' >> ~/.zshrc
-
-# Fish (automatic loading from completions directory)
-mkdir -p ~/.config/fish/completions
-kokoro-tts-tool completion fish > ~/.config/fish/completions/kokoro-tts-tool.fish
-```
-
-### Usage
-
-Once installed, completion works automatically:
-
-```bash
-# Tab completion for commands
-kokoro-tts-tool <TAB>
-# Shows: completion
-
-# Tab completion for options
-kokoro-tts-tool --<TAB>
-# Shows: --verbose --version --help
-
-# Tab completion for shell types
-kokoro-tts-tool completion <TAB>
-# Shows: bash zsh fish
-```
-
-### Getting Help
-
-```bash
-# View completion installation instructions
-kokoro-tts-tool completion --help
 ```
 
 ## Development
@@ -229,57 +255,56 @@ kokoro-tts-tool completion --help
 ### Setup Development Environment
 
 ```bash
-# Clone repository
 git clone https://github.com/dnvriend/kokoro-tts-tool.git
 cd kokoro-tts-tool
-
-# Install dependencies
 make install
-
-# Show available commands
 make help
 ```
 
 ### Available Make Commands
 
 ```bash
-make install                 # Install dependencies
-make format                  # Format code with ruff
-make lint                    # Run linting with ruff
-make typecheck               # Run type checking with mypy
-make test                    # Run tests with pytest
-make security-bandit         # Python security linter
-make security-pip-audit      # Dependency vulnerability scanner
-make security-gitleaks       # Secret/API key detection
-make security                # Run all security checks
-make check                   # Run all checks (lint, typecheck, test, security)
-make pipeline                # Run full pipeline (format, lint, typecheck, test, security, build, install-global)
-make build                   # Build package
-make run ARGS="..."          # Run kokoro-tts-tool locally
-make clean                   # Remove build artifacts
+make install         # Install dependencies
+make format          # Format code
+make lint            # Run linting
+make typecheck       # Type checking
+make test            # Run tests
+make security        # Security scans
+make check           # All checks
+make pipeline        # Full pipeline
 ```
 
 ### Project Structure
 
 ```
 kokoro-tts-tool/
-├── kokoro_tts_tool/    # Main package
+├── kokoro_tts_tool/
 │   ├── __init__.py
-│   ├── cli.py          # CLI entry point
-│   └── utils.py        # Utility functions
-├── tests/              # Test suite
-│   ├── __init__.py
-│   └── test_utils.py
-├── pyproject.toml      # Project configuration
-├── Makefile            # Development commands
-├── README.md           # This file
-├── LICENSE             # MIT License
-└── CLAUDE.md           # Development documentation
+│   ├── cli.py              # CLI entry point
+│   ├── engine.py           # TTS engine wrapper
+│   ├── models.py           # Model management
+│   ├── voices.py           # Voice definitions
+│   ├── splitter.py         # Text chunking for long documents
+│   ├── streaming.py        # Audio streaming for speaker playback
+│   ├── utils.py            # Utilities
+│   ├── logging_config.py   # Logging setup
+│   ├── completion.py       # Shell completion
+│   └── commands/           # CLI commands
+│       ├── synthesize_commands.py
+│       ├── voice_commands.py
+│       ├── init_commands.py
+│       ├── info_commands.py
+│       └── infinite_commands.py
+├── tests/
+├── references/             # Research documentation
+├── plugins/                # Claude Code plugin
+├── pyproject.toml
+├── Makefile
+├── README.md
+└── CLAUDE.md
 ```
 
 ## Testing
-
-Run the test suite:
 
 ```bash
 # Run all tests
@@ -287,33 +312,17 @@ make test
 
 # Run tests with verbose output
 uv run pytest tests/ -v
-
-# Run specific test file
-uv run pytest tests/test_utils.py
-
-# Run with coverage
-uv run pytest tests/ --cov=kokoro_tts_tool
 ```
 
 ## Security
 
-The project includes lightweight security tools providing 80%+ coverage with fast scan times:
-
-### Security Tools
-
-| Tool | Purpose | Speed | Coverage |
-|------|---------|-------|----------|
-| **bandit** | Python code security linting | ⚡⚡ Fast | SQL injection, hardcoded secrets, unsafe functions |
-| **pip-audit** | Dependency vulnerability scanning | ⚡⚡ Fast | Known CVEs in dependencies |
-| **gitleaks** | Secret and API key detection | ⚡⚡⚡ Very Fast | Secrets in code and git history |
-
-### Running Security Scans
+The project includes security scanning:
 
 ```bash
-# Run all security checks (~5-8 seconds)
+# Run all security checks
 make security
 
-# Or run individually
+# Individual scans
 make security-bandit       # Python security linting
 make security-pip-audit    # Dependency CVE scanning
 make security-gitleaks     # Secret detection
@@ -321,66 +330,38 @@ make security-gitleaks     # Secret detection
 
 ### Prerequisites
 
-gitleaks must be installed separately:
-
 ```bash
-# macOS
+# Install gitleaks (macOS)
 brew install gitleaks
-
-# Linux
-# See: https://github.com/gitleaks/gitleaks#installation
 ```
-
-Security checks run automatically in `make check` and `make pipeline`.
-
-### What's Protected
-
-- ✅ AWS credentials (AKIA*, ASIA*, etc.)
-- ✅ GitHub tokens (ghp_*, gho_*, etc.)
-- ✅ API keys and secrets
-- ✅ Private keys
-- ✅ Slack tokens
-- ✅ 100+ other secret types
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch
 3. Make your changes
-4. Run the full pipeline (`make pipeline`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints for all functions
-- Write docstrings for public functions
-- Format code with `ruff`
-- Pass all linting and type checks
+4. Run `make pipeline`
+5. Submit a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Author
 
-**Dennis Vriend**
-
-- GitHub: [@dnvriend](https://github.com/dnvriend)
+**Dennis Vriend** - [@dnvriend](https://github.com/dnvriend)
 
 ## Acknowledgments
 
-- Built with [Click](https://click.palletsprojects.com/) for CLI framework
-- Developed with [uv](https://github.com/astral-sh/uv) for fast Python tooling
+- [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) - The TTS model
+- [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) - ONNX implementation
+- [Click](https://click.palletsprojects.com/) - CLI framework
+- [uv](https://github.com/astral-sh/uv) - Fast Python tooling
 
 ---
 
 **Generated with AI**
 
-This project was generated using [Claude Code](https://www.anthropic.com/claude/code), an AI-powered development tool by [Anthropic](https://www.anthropic.com/). Claude Code assisted in creating the project structure, implementation, tests, documentation, and development tooling.
+This project was generated using [Claude Code](https://www.anthropic.com/claude/code).
 
-Made with ❤️ using Python 3.14
+Made with Python 3.14

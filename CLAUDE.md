@@ -2,11 +2,16 @@
 
 ## Goal
 
-A CLI that provides text-to-speech using kokoro
+A CLI that provides local text-to-speech using Kokoro TTS on Apple Silicon.
 
 ## What is kokoro-tts-tool?
 
-`kokoro-tts-tool` is a command-line utility built with modern Python tooling and best practices.
+`kokoro-tts-tool` is a Python CLI for local text-to-speech synthesis using the Kokoro-82M model. It provides:
+
+- **Local inference**: ONNX runtime for fast, CPU-optimized synthesis
+- **60+ voices**: Multiple languages (English, Japanese, Mandarin, Spanish, etc.)
+- **Infinite streaming**: Continuous TTS for long documents without audio artifacts
+- **Fast rendering**: 20-50x real-time on Apple Silicon M4
 
 ## Technical Requirements
 
@@ -19,6 +24,10 @@ A CLI that provides text-to-speech using kokoro
 ### Dependencies
 
 - `click` - CLI framework
+- `kokoro-onnx` - ONNX implementation of Kokoro TTS
+- `sounddevice` - Audio playback
+- `soundfile` - WAV file handling
+- `numpy` - Audio array processing
 
 ### Development Dependencies
 
@@ -29,13 +38,13 @@ A CLI that provides text-to-speech using kokoro
 - `pip-audit` - Dependency vulnerability scanning
 - `gitleaks` - Secret detection (requires separate installation)
 
-## CLI Arguments
+## CLI Commands
 
 ```bash
-kokoro-tts-tool [OPTIONS]
+kokoro-tts-tool [OPTIONS] COMMAND [ARGS]
 ```
 
-### Options
+### Global Options
 
 - `-v, --verbose` - Enable verbose output (count flag: -v, -vv, -vvv)
   - `-v` (count=1): INFO level logging
@@ -44,6 +53,36 @@ kokoro-tts-tool [OPTIONS]
 - `--help` / `-h` - Show help message
 - `--version` - Show version
 
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `init` | Download and initialize TTS models (~350MB) |
+| `synthesize` | Convert text to speech (speakers or file) |
+| `infinite` | Stream continuous TTS from long documents |
+| `list-voices` | List all 60+ available TTS voices |
+| `info` | Display configuration status |
+| `completion` | Generate shell completion script |
+
+### Quick Start Examples
+
+```bash
+# Initialize (downloads models)
+kokoro-tts-tool init
+
+# Basic synthesis to speakers
+kokoro-tts-tool synthesize "Hello world"
+
+# Save to file with different voice
+kokoro-tts-tool synthesize "Hello" --voice am_adam --output speech.wav
+
+# Stream a book to speakers
+kokoro-tts-tool infinite --input book.md
+
+# Render audiobook (fast offline mode)
+kokoro-tts-tool infinite --input book.md --output audiobook.wav
+```
+
 ## Project Structure
 
 ```
@@ -51,12 +90,33 @@ kokoro-tts-tool/
 ├── kokoro_tts_tool/
 │   ├── __init__.py
 │   ├── cli.py            # Click CLI entry point (group with subcommands)
+│   ├── engine.py         # TTS engine wrapper (kokoro-onnx)
+│   ├── models.py         # Model downloading and management
+│   ├── voices.py         # Voice definitions and validation
+│   ├── splitter.py       # Text chunking for long documents
+│   ├── streaming.py      # Audio streaming for speaker playback
 │   ├── completion.py     # Shell completion command
 │   ├── logging_config.py # Multi-level verbosity logging
-│   └── utils.py          # Utility functions
+│   ├── utils.py          # Utility functions
+│   └── commands/         # CLI command modules
+│       ├── __init__.py
+│       ├── synthesize_commands.py  # Text-to-speech synthesis
+│       ├── voice_commands.py       # Voice listing/filtering
+│       ├── init_commands.py        # Model initialization
+│       ├── info_commands.py        # Configuration display
+│       └── infinite_commands.py    # Long document streaming
 ├── tests/
 │   ├── __init__.py
-│   └── test_utils.py
+│   ├── test_utils.py
+│   ├── test_models.py
+│   ├── test_voices.py
+│   ├── test_splitter.py
+│   └── test_streaming.py
+├── plugins/              # Claude Code plugin
+│   └── kokoro-tts-tool/
+│       ├── commands/     # Slash commands
+│       └── skills/       # Skills
+├── references/           # Research documentation
 ├── pyproject.toml        # Project configuration
 ├── README.md             # User documentation
 ├── CLAUDE.md             # This file

@@ -40,20 +40,30 @@ def setup_logging(verbose_count: int = 0) -> None:
     else:
         level = logging.WARNING
 
+    # Configure format - detailed for DEBUG level
+    if verbose_count >= 2:
+        fmt = "[%(levelname)s] %(name)s:%(lineno)d - %(message)s"
+    else:
+        fmt = "[%(levelname)s] %(message)s"
+
     # Configure root logger
     logging.basicConfig(
         level=level,
-        format="[%(levelname)s] %(message)s",
+        format=fmt,
         stream=sys.stderr,
         force=True,  # Override any existing configuration
     )
 
     # Configure dependent library loggers at TRACE level (-vvv)
-    # Add your project-specific library loggers here
-    # Example:
-    #   if verbose_count >= 3:
-    #       logging.getLogger("requests").setLevel(logging.DEBUG)
-    #       logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    if verbose_count >= 3:
+        # Enable ONNX runtime logging
+        logging.getLogger("onnxruntime").setLevel(logging.DEBUG)
+        # Enable urllib3 for model downloads
+        logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    else:
+        # Suppress noisy libraries at lower verbosity
+        logging.getLogger("onnxruntime").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:

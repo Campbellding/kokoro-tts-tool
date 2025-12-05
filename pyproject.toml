@@ -1,10 +1,15 @@
 [project]
 name = "kokoro-tts-tool"
 version = "0.1.0"
-description = "A CLI that provides text-to-speech using kokoro"
-requires-python = ">=3.14"
+description = "A CLI that provides local text-to-speech using Kokoro TTS on Apple Silicon"
+requires-python = ">=3.13"
 dependencies = [
     "click>=8.1.7",
+    "kokoro-onnx>=0.4.9",
+    "soundfile>=0.13.1",
+    "sounddevice>=0.5.1",
+    "numpy>=2.0.2",
+    "langchain-text-splitters>=0.3.0",
 ]
 authors = [
     {name = "Dennis Vriend", email = "dvriend@ilionx.com"}
@@ -17,7 +22,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.urls]
@@ -43,19 +48,19 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = []
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-disallow_any_generics = true
 strict = true
+ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv"]
