@@ -60,6 +60,9 @@ def main(verbose: int) -> None:
         # Synthesize with specific voice
         kokoro-tts-tool synthesize "Hello" --voice am_adam --speed 1.2
 
+        # Blend two voices (e.g., 70% Heart, 30% Bella)
+        kokoro-tts-tool synthesize "Hello" --voice "af_heart:0.7,af_bella:0.3"
+
         # Save to file
         kokoro-tts-tool synthesize "Hello" --output speech.wav
 

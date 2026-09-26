@@ -563,41 +563,152 @@ def get_voice(voice_id: str) -> VoiceInfo | None:
     return VOICES.get(voice_id.lower())
 
 
-def validate_voice(voice_id: str) -> str:
-    """Validate a voice ID.
+def is_voice_blend(voice_spec: str) -> bool:
+    """Check if a voice specification is a blend.
 
     Args:
-        voice_id: Voice identifier to validate
+        voice_spec: Voice identifier or blend specification
 
     Returns:
-        Validated voice ID (lowercase)
+        True if voice_spec represents a blend of voices
+    """
+    return "," in voice_spec or ":" in voice_spec
+
+
+def parse_voice_spec(voice_spec: str) -> list[tuple[str, float]]:
+    """Parse and validate a voice specification.
+
+    Supports:
+    - Single voice: "af_heart" -> [("af_heart", 1.0)]
+    - Blended voices with weights: "af_heart:0.7,af_bella:0.3"
+      -> [("af_heart", 0.7), ("af_bella", 0.3)]
+    - Blended voices without weights: "af_heart,af_bella" -> [("af_heart", 0.5), ("af_bella", 0.5)]
+
+    Weights are automatically normalized to sum to 1.0.
+
+    Args:
+        voice_spec: Voice identifier or blend specification
+
+    Returns:
+        List of (voice_id, normalized_weight) tuples
 
     Raises:
-        ValueError: If voice is invalid
+        ValueError: If voice specification is invalid or references unknown voices
     """
-    voice_lower = voice_id.lower()
-    if voice_lower not in VOICES:
-        available = ", ".join(sorted(VOICES.keys())[:10])
+    cleaned = voice_spec.strip()
+    if not cleaned:
+        raise ValueError("Voice specification cannot be empty.")
+
+    # Split by comma
+    parts = [p.strip() for p in cleaned.split(",")]
+    if any(not p for p in parts):
+        raise ValueError(f"Invalid voice specification: '{voice_spec}'. Segments cannot be empty.")
+
+    parsed: list[tuple[str, float | None]] = []
+    has_weights = False
+    has_unweighted = False
+
+    for part in parts:
+        if ":" in part:
+            subparts = part.split(":")
+            if len(subparts) != 2:
+                raise ValueError(
+                    f"Invalid voice blend format: '{part}'. "
+                    "Expected format 'voice_id:weight' (e.g., 'af_heart:0.7')."
+                )
+            vid = subparts[0].strip().lower()
+            weight_str = subparts[1].strip()
+
+            if not vid:
+                raise ValueError(f"Missing voice ID in segment: '{part}'")
+            if not weight_str:
+                raise ValueError(f"Missing weight in segment: '{part}'")
+
+            try:
+                weight = float(weight_str)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid weight '{weight_str}' for voice '{vid}'. "
+                    "Weight must be a valid number."
+                )
+
+            if weight < 0:
+                raise ValueError(
+                    f"Voice weight must be non-negative, got: {weight} for voice '{vid}'"
+                )
+
+            parsed.append((vid, weight))
+            has_weights = True
+        else:
+            vid = part.strip().lower()
+            if not vid:
+                raise ValueError("Voice ID cannot be empty.")
+            parsed.append((vid, None))
+            has_unweighted = True
+
+    if has_weights and has_unweighted:
         raise ValueError(
-            f"Unknown voice: {voice_id}\n\n"
-            f"Available voices include: {available}...\n\n"
-            "Use 'kokoro-tts-tool list-voices' to see all options."
+            f"Inconsistent voice specification: '{voice_spec}'. "
+            "Either specify weights for all voices (e.g., 'af_heart:0.7,af_bella:0.3') "
+            "or none (e.g., 'af_heart,af_bella')."
         )
-    return voice_lower
+
+    # Validate that all voice IDs exist
+    for vid, _ in parsed:
+        if vid not in VOICES:
+            available = ", ".join(sorted(VOICES.keys())[:10])
+            raise ValueError(
+                f"Unknown voice: {vid}\n\n"
+                f"Available voices include: {available}...\n\n"
+                "Use 'kokoro-tts-tool list-voices' to see all options."
+            )
+
+    # Calculate normalized weights
+    if has_unweighted:
+        equal_weight = 1.0 / len(parsed)
+        return [(vid, equal_weight) for vid, _ in parsed]
+    else:
+        total_weight = sum(w for _, w in parsed if w is not None)
+        if total_weight <= 0:
+            raise ValueError("Total voice blend weight must be greater than zero.")
+        return [(vid, (w or 0.0) / total_weight) for vid, w in parsed]
+
+
+def validate_voice(voice_id: str) -> str:
+    """Validate a voice ID or blend specification.
+
+    Args:
+        voice_id: Voice identifier or blend specification (e.g., 'af_heart:0.7,af_bella:0.3')
+
+    Returns:
+        Validated and normalized voice specification
+
+    Raises:
+        ValueError: If voice specification or constituent voices are invalid
+    """
+    parsed = parse_voice_spec(voice_id)
+    if len(parsed) == 1 and not is_voice_blend(voice_id):
+        return parsed[0][0]
+    return ",".join(f"{vid}:{round(w, 4):g}" for vid, w in parsed)
 
 
 def get_language_code(voice_id: str) -> str:
-    """Get the language code for a voice.
+    """Get the language code for a voice or voice blend.
+
+    For blended voices, uses the primary (first) voice to determine
+    the language code.
 
     Args:
-        voice_id: Voice identifier
+        voice_id: Voice identifier or blend specification
 
     Returns:
         Language code (e.g., 'en-us')
     """
-    if voice_id and len(voice_id) >= 1:
-        lang_prefix = voice_id[0].lower()
-        return LANGUAGE_CODES.get(lang_prefix, "en-us")
+    if voice_id:
+        first_part = voice_id.split(",")[0].split(":")[0].strip().lower()
+        if first_part and len(first_part) >= 1:
+            lang_prefix = first_part[0]
+            return LANGUAGE_CODES.get(lang_prefix, "en-us")
     return "en-us"
 
 

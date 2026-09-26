@@ -33,7 +33,10 @@ logger = get_logger(__name__)
     "--voice",
     "-v",
     default=DEFAULT_VOICE,
-    help=f"Voice ID to use (default: {DEFAULT_VOICE})",
+    help=(
+        f"Voice ID or blend (e.g., 'af_heart', 'af_heart:0.7,af_bella:0.3') "
+        f"(default: {DEFAULT_VOICE})"
+    ),
 )
 @click.option(
     "--output",
@@ -80,6 +83,14 @@ def synthesize(
         kokoro-tts-tool synthesize "Hello" --voice am_adam
 
     \b
+        # Blend two voices with custom weights
+        kokoro-tts-tool synthesize "Hello" --voice "af_heart:0.7,af_bella:0.3"
+
+    \b
+        # Blend two voices equally
+        kokoro-tts-tool synthesize "Hello" --voice "af_heart,af_bella"
+
+    \b
         # Save to file
         kokoro-tts-tool synthesize "Hello" --output speech.wav
 
@@ -94,7 +105,7 @@ def synthesize(
     \b
         # Multiple options combined
         cat article.txt | kokoro-tts-tool synthesize --stdin \\
-            --voice bf_emma \\
+            --voice "af_heart:0.6,am_adam:0.4" \\
             --output article.wav \\
             --speed 0.9
 
@@ -107,6 +118,7 @@ def synthesize(
     Available Voices:
         Use 'kokoro-tts-tool list-voices' to see all 60+ voices.
         Examples: af_heart, am_adam, bf_emma, bm_george
+        Voice blending is supported via: 'voice1:weight1,voice2:weight2'
     """
     try:
         # Validate input

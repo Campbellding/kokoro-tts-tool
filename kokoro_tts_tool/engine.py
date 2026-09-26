@@ -17,7 +17,7 @@ import soundfile as sf
 
 from kokoro_tts_tool.logging_config import get_logger
 from kokoro_tts_tool.models import get_model_paths
-from kokoro_tts_tool.voices import get_language_code
+from kokoro_tts_tool.voices import get_language_code, is_voice_blend, parse_voice_spec
 
 logger = get_logger(__name__)
 
@@ -40,6 +40,7 @@ class KokoroEngine:
         self._engine: Any = None
         self._model_path: Path | None = None
         self._voices_path: Path | None = None
+        self._voice_cache: dict[str, np.ndarray] = {}
 
     def load(self) -> None:
         """Load the model into memory.
@@ -76,6 +77,39 @@ class KokoroEngine:
         """
         return self._engine is not None
 
+    def _resolve_voice(self, voice: str) -> str | np.ndarray:
+        """Resolve a voice ID or blend into a voice style array or voice name.
+
+        Args:
+            voice: Voice ID (e.g. 'af_heart') or blend (e.g. 'af_heart:0.7,af_bella:0.3')
+
+        Returns:
+            Voice ID string for single unweighted voice, or blended numpy array
+        """
+        if not is_voice_blend(voice):
+            return voice
+
+        if voice in self._voice_cache:
+            return self._voice_cache[voice]
+
+        components = parse_voice_spec(voice)
+        if len(components) == 1:
+            return components[0][0]
+
+        logger.debug(f"Computing blended voice style for: {voice}")
+        blended: np.ndarray | None = None
+        for voice_id, weight in components:
+            style = self._engine.get_voice_style(voice_id)
+            weighted = np.array(style * weight, dtype=np.float32)
+            if blended is None:
+                blended = weighted
+            else:
+                blended = blended + weighted
+
+        assert blended is not None
+        self._voice_cache[voice] = blended
+        return blended
+
     def generate(
         self,
         text: str,
@@ -86,7 +120,7 @@ class KokoroEngine:
 
         Args:
             text: Input text to synthesize
-            voice: Voice ID (e.g., 'af_heart')
+            voice: Voice ID or blend (e.g., 'af_heart' or 'af_heart:0.7,af_bella:0.3')
             speed: Speech speed multiplier (0.5-2.0)
 
         Returns:
@@ -97,7 +131,10 @@ class KokoroEngine:
         if self._engine is None:
             raise RuntimeError("Engine failed to load")
 
-        # Get language code from voice ID
+        # Resolve voice (handles blends)
+        resolved_voice = self._resolve_voice(voice)
+
+        # Get language code from voice ID or blend spec
         lang = get_language_code(voice)
 
         logger.debug(f"Generating speech: voice={voice}, speed={speed}, lang={lang}")
@@ -105,7 +142,7 @@ class KokoroEngine:
 
         samples, sample_rate = self._engine.create(
             text=text,
-            voice=voice,
+            voice=resolved_voice,
             speed=speed,
             lang=lang,
         )
