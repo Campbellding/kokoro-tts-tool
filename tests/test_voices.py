@@ -11,9 +11,11 @@ from kokoro_tts_tool.voices import (
     VOICES,
     get_language_code,
     get_voice,
+    is_voice_blend,
     list_accents,
     list_languages,
     list_voices,
+    parse_voice_spec,
     validate_voice,
 )
 
@@ -155,3 +157,117 @@ def test_voice_info_structure() -> None:
     assert "accent" in voice
     assert "grade" in voice
     assert "description" in voice
+
+
+def test_is_voice_blend() -> None:
+    """Test detecting if a voice string is a blend."""
+    assert not is_voice_blend("af_heart")
+    assert is_voice_blend("af_heart:0.7,af_bella:0.3")
+    assert is_voice_blend("af_heart,af_bella")
+    assert is_voice_blend("af_heart:1.0")
+
+
+def test_parse_voice_spec_single() -> None:
+    """Test parsing a single voice specification."""
+    assert parse_voice_spec("af_heart") == [("af_heart", 1.0)]
+    assert parse_voice_spec("  af_heart  ") == [("af_heart", 1.0)]
+    assert parse_voice_spec("AF_HEART") == [("af_heart", 1.0)]
+
+
+def test_parse_voice_spec_blend_explicit_weights() -> None:
+    """Test parsing voice blends with explicit weights."""
+    result = parse_voice_spec("af_heart:0.7,af_bella:0.3")
+    assert len(result) == 2
+    assert result[0][0] == "af_heart"
+    assert result[0][1] == pytest.approx(0.7)
+    assert result[1][0] == "af_bella"
+    assert result[1][1] == pytest.approx(0.3)
+
+
+def test_parse_voice_spec_blend_whitespace() -> None:
+    """Test parsing blends with whitespace around separators."""
+    result = parse_voice_spec(" af_heart : 0.7 , af_bella : 0.3 ")
+    assert len(result) == 2
+    assert result[0][0] == "af_heart"
+    assert result[0][1] == pytest.approx(0.7)
+    assert result[1][0] == "af_bella"
+    assert result[1][1] == pytest.approx(0.3)
+
+
+def test_parse_voice_spec_blend_implicit_weights() -> None:
+    """Test parsing voice blends without explicit weights (equal split)."""
+    result = parse_voice_spec("af_heart,af_bella")
+    assert len(result) == 2
+    assert result[0] == ("af_heart", 0.5)
+    assert result[1] == ("af_bella", 0.5)
+
+    three_voices = parse_voice_spec("af_heart,af_bella,am_adam")
+    assert len(three_voices) == 3
+    assert all(w == pytest.approx(1 / 3) for _, w in three_voices)
+
+
+def test_parse_voice_spec_blend_normalized_weights() -> None:
+    """Test that weights are normalized to sum to 1.0."""
+    result = parse_voice_spec("af_heart:70,am_adam:30")
+    assert len(result) == 2
+    assert result[0][0] == "af_heart"
+    assert result[0][1] == pytest.approx(0.7)
+    assert result[1][0] == "am_adam"
+    assert result[1][1] == pytest.approx(0.3)
+
+
+def test_parse_voice_spec_errors() -> None:
+    """Test error handling in voice specification parsing."""
+    # Empty string
+    with pytest.raises(ValueError, match="Voice specification cannot be empty"):
+        parse_voice_spec("")
+
+    with pytest.raises(ValueError, match="Voice specification cannot be empty"):
+        parse_voice_spec("   ")
+
+    # Missing components
+    with pytest.raises(ValueError, match="Invalid voice blend format|Missing"):
+        parse_voice_spec("af_heart:")
+
+    with pytest.raises(ValueError, match="Missing voice ID|Missing"):
+        parse_voice_spec(":0.5")
+
+    with pytest.raises(ValueError, match="Segments cannot be empty"):
+        parse_voice_spec("af_heart,")
+
+    # Non-numeric weight
+    with pytest.raises(ValueError, match="Invalid weight"):
+        parse_voice_spec("af_heart:abc,af_bella:0.3")
+
+    # Negative weight
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_voice_spec("af_heart:-0.5,af_bella:0.5")
+
+    # Zero total weight
+    with pytest.raises(ValueError, match="greater than zero"):
+        parse_voice_spec("af_heart:0,af_bella:0")
+
+    # Unknown voice in blend
+    with pytest.raises(ValueError, match="Unknown voice: invalid_voice"):
+        parse_voice_spec("invalid_voice:0.7,af_bella:0.3")
+
+    with pytest.raises(ValueError, match="Unknown voice: invalid_voice"):
+        parse_voice_spec("af_heart:0.7,invalid_voice:0.3")
+
+    # Inconsistent weighting (mixed weighted and unweighted)
+    with pytest.raises(ValueError, match="Inconsistent voice specification"):
+        parse_voice_spec("af_heart:0.7,af_bella")
+
+
+def test_validate_voice_blend() -> None:
+    """Test validating voice blend specifications."""
+    assert validate_voice("af_heart:0.7,af_bella:0.3") == "af_heart:0.7,af_bella:0.3"
+    assert validate_voice("AF_HEART: 0.7, AF_BELLA: 0.3") == "af_heart:0.7,af_bella:0.3"
+    assert validate_voice("af_heart,af_bella") == "af_heart:0.5,af_bella:0.5"
+
+
+def test_get_language_code_blend() -> None:
+    """Test getting language code for blended voices."""
+    assert get_language_code("af_heart:0.7,af_bella:0.3") == "en-us"
+    assert get_language_code("bf_emma:0.5,bm_george:0.5") == "en-gb"
+    assert get_language_code("jf_alpha:0.5,af_heart:0.5") == "ja"

@@ -244,7 +244,10 @@ def _render_to_file(
 @click.option(
     "--voice",
     default=DEFAULT_VOICE,
-    help=f"Voice ID to use (default: {DEFAULT_VOICE})",
+    help=(
+        f"Voice ID or blend (e.g., 'af_heart', 'af_heart:0.7,af_bella:0.3') "
+        f"(default: {DEFAULT_VOICE})"
+    ),
 )
 @click.option(
     "--speed",
@@ -314,10 +317,10 @@ def infinite(
             --speed 1.2
 
     \b
-        # Render audiobook with narrator voice
+        # Blend two voices for a unique narrator
         kokoro-tts-tool infinite --input book.md \\
             --output book.wav \\
-            --voice bm_george \\
+            --voice "am_adam:0.7,bm_george:0.3" \\
             --speed 0.95
 
     \b
@@ -342,6 +345,7 @@ def infinite(
     Available Voices:
         Use 'kokoro-tts-tool list-voices' to see all 60+ voices.
         Recommended for books: am_adam, bm_george, af_heart
+        Voice blending is supported via: 'voice1:weight1,voice2:weight2'
     """
     try:
         # Validate voice

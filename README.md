@@ -46,6 +46,7 @@ A CLI that provides local text-to-speech using Kokoro TTS on Apple Silicon. No A
 
 - Local TTS with Kokoro-82M (82 million parameters)
 - 60+ voices across 8 languages
+- Voice blending: mix multiple voices with custom weights (e.g., `af_heart:0.7,af_bella:0.3`)
 - Near real-time synthesis on Apple Silicon
 - Auto-download of model files (~350MB)
 - WAV output or direct speaker playback
@@ -127,6 +128,7 @@ kokoro-tts-tool init
 kokoro-tts-tool synthesize "Your text here"
 kokoro-tts-tool synthesize "Your text" --output speech.wav
 kokoro-tts-tool synthesize "Your text" --voice bf_emma --speed 1.2
+kokoro-tts-tool synthesize "Your text" --voice "af_heart:0.7,af_bella:0.3"
 
 # Read from stdin
 echo "Hello from stdin" | kokoro-tts-tool synthesize --stdin
@@ -145,7 +147,7 @@ kokoro-tts-tool info
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--voice`, `-v` | Voice ID (e.g., af_heart, am_adam) | af_heart |
+| `--voice`, `-v` | Voice ID or blend (e.g., `af_heart`, `af_heart:0.7,af_bella:0.3`) | `af_heart` |
 | `--output`, `-o` | Output WAV file path | (plays to speakers) |
 | `--speed` | Speech speed (0.5 to 2.0) | 1.0 |
 | `--stdin`, `-s` | Read text from stdin | false |
@@ -166,6 +168,9 @@ cat chapter.md | kokoro-tts-tool infinite --stdin
 
 # With custom voice and speed
 kokoro-tts-tool infinite --input notes.md --voice am_adam --speed 1.2
+
+# With blended narrator voice
+kokoro-tts-tool infinite --input book.md --voice "am_adam:0.7,bm_george:0.3" --output audiobook.wav
 ```
 
 ### Infinite Streaming Options
@@ -175,7 +180,7 @@ kokoro-tts-tool infinite --input notes.md --voice am_adam --speed 1.2
 | `--input`, `-i` | Input text/markdown file | - |
 | `--stdin`, `-s` | Read text from stdin | false |
 | `--output`, `-o` | Save to WAV file (fast offline mode) | (plays to speakers) |
-| `--voice` | Voice ID | af_heart |
+| `--voice` | Voice ID or blend | `af_heart` |
 | `--speed` | Speech speed (0.5 to 2.0) | 1.0 |
 | `--chunk-size` | Target words per chunk (50-1000) | 200 |
 | `--pause` | Pause between chunks in ms (0-2000) | 150 |
@@ -214,6 +219,26 @@ Run `kokoro-tts-tool list-voices` for the complete list.
 - **A/A-**: Highest quality, recommended for production
 - **B+/B**: Good quality
 - **B-**: Acceptable quality
+
+### Voice Blending / Mixing
+
+You can blend two or more voices by calculating a weighted combination of their voice style embeddings:
+
+```bash
+# 70% Heart, 30% Bella
+kokoro-tts-tool synthesize "Hello world" --voice "af_heart:0.7,af_bella:0.3"
+
+# Equal 50/50 mix
+kokoro-tts-tool synthesize "Hello world" --voice "af_heart,af_bella"
+
+# Three voices blended together
+kokoro-tts-tool synthesize "Hello world" --voice "af_heart:0.5,af_bella:0.3,am_adam:0.2"
+
+# Blended narrator in infinite streaming
+kokoro-tts-tool infinite --input book.md --voice "am_adam:0.7,bm_george:0.3" --output audiobook.wav
+```
+
+Weights are automatically normalized to sum to 1.0.
 
 ## Multi-Level Verbosity Logging
 
